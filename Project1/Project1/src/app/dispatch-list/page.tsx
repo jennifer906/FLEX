@@ -309,17 +309,13 @@ function DispatchListContent() {
               <div key={item.id} className="bg-white rounded-2xl px-4 py-4">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[15px] font-bold text-[#1C1C1E]">{item.date}</span>
-                  {status === "추가 배차" && item.additionalType ? (
+                  {status === "추가 배차" && item.additionalType === "zrank" ? (
                     <button
-                      onClick={() => setAdditionalPopup(item.additionalType!)}
-                      className="text-[12px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1"
+                      onClick={() => setAdditionalPopup("zrank")}
+                      className="text-[12px] font-semibold px-2.5 py-1 rounded-full"
                       style={{ color: st.color, backgroundColor: st.bg }}
                     >
                       {status}
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <circle cx="5" cy="5" r="4.5" stroke="currentColor"/>
-                        <path d="M5 4v3M5 3h.01" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-                      </svg>
                     </button>
                   ) : (
                     <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full" style={{ color: st.color, backgroundColor: st.bg }}>
@@ -429,33 +425,21 @@ function DispatchListContent() {
           </div>
         )}
 
-        {/* 추가 배차 안내 팝업 */}
+        {/* 추가 배차 안내 팝업 (Z랭크) */}
         {additionalPopup && (
           <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center px-6" onClick={() => setAdditionalPopup(null)}>
             <div className="w-full max-w-[295px] bg-white rounded-3xl px-6 py-7 shadow-xl text-center" onClick={(e) => e.stopPropagation()}>
-              {additionalPopup === "urgent" ? (
-                <>
-                  <div className="w-14 h-14 rounded-full bg-[#EFEFFD] flex items-center justify-center mx-auto mb-4 text-2xl">⚡</div>
-                  <h3 className="text-[17px] font-bold text-[#1C1C1E] mb-2">긴급 구인으로 즉시 확정</h3>
-                  <p className="text-[13px] text-[#8E8E93] mb-6 leading-relaxed">
-                    이 배차는 긴급 구인 신청을 통해<br/>즉시 확정되었습니다.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <div className="w-14 h-14 rounded-full bg-[#FFF4E5] flex items-center justify-center mx-auto mb-4">
-                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                      <path d="M14 9v6M14 19h.01" stroke="#FF9500" strokeWidth="2.2" strokeLinecap="round"/>
-                      <circle cx="14" cy="14" r="11" stroke="#FF9500" strokeWidth="2"/>
-                    </svg>
-                  </div>
-                  <h3 className="text-[17px] font-bold text-[#1C1C1E] mb-2">운영센터 연락 필요</h3>
-                  <p className="text-[13px] text-[#8E8E93] mb-6 leading-relaxed">
-                    Z랭크 기사님의 추가 배차는<br/>자동 확정되지 않습니다.<br/>
-                    <span className="text-[#FF9500] font-semibold">운영센터로 직접 연락해주세요.</span>
-                  </p>
-                </>
-              )}
+              <div className="w-14 h-14 rounded-full bg-[#FFF4E5] flex items-center justify-center mx-auto mb-4">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                  <path d="M14 9v6M14 19h.01" stroke="#FF9500" strokeWidth="2.2" strokeLinecap="round"/>
+                  <circle cx="14" cy="14" r="11" stroke="#FF9500" strokeWidth="2"/>
+                </svg>
+              </div>
+              <h3 className="text-[17px] font-bold text-[#1C1C1E] mb-2">운영센터 연락 필요</h3>
+              <p className="text-[13px] text-[#8E8E93] mb-6 leading-relaxed">
+                Z랭크 기사님의 추가 배차는<br/>자동 확정되지 않습니다.<br/>
+                <span className="text-[#FF9500] font-semibold">운영센터로 직접 연락해주세요.</span>
+              </p>
               <button
                 onClick={() => setAdditionalPopup(null)}
                 className="w-full h-[48px] rounded-2xl bg-[#6262EE] text-white text-[15px] font-semibold"
