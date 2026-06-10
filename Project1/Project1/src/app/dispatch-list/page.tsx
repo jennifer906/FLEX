@@ -6,9 +6,8 @@ import HomeIndicator from "@/components/HomeIndicator";
 
 // ─── 타입 ────────────────────────────────────────────────────────────
 type ItemStatus = "신청 완료" | "배차 후보" | "배차 확정" | "추가 배차" | "미배차";
-type AdditionalType = "urgent" | "zrank";
 
-interface DispatchItem {
+export interface DispatchItem {
   id: string;
   date: string;
   rawDate: string;
@@ -17,12 +16,11 @@ interface DispatchItem {
   jobType: string;
   quantity: string;
   status: ItemStatus;
-  cutoffPassed?: boolean; // 데모용: true면 13시 이후 시나리오 강제
-  additionalType?: AdditionalType; // 추가 배차 세부 유형
+  cutoffPassed?: boolean;
 }
 
-// ─── 샘플 데이터 (20개) ───────────────────────────────────────────────
-const ALL_ITEMS: DispatchItem[] = [
+// ─── 샘플 데이터 ─────────────────────────────────────────────────────
+const STATIC_ITEMS: DispatchItem[] = [
   { id: "23", date: "2026년 6월 14일(일)", rawDate: "2026-06-14", round: "1회차", region: "서울특별시 용산구",  jobType: "배송/반품", quantity: "20 ~ 40건", status: "배차 후보", cutoffPassed: true  },
   { id: "22", date: "2026년 6월 13일(토)", rawDate: "2026-06-13", round: "2회차", region: "서울특별시 종로구",  jobType: "배송/반품", quantity: "40 ~ 60건", status: "배차 후보", cutoffPassed: false },
   { id:  "1", date: "2026년 6월 12일(금)", rawDate: "2026-06-12", round: "1회차", region: "서울특별시 강남구",  jobType: "배송/반품", quantity: "20 ~ 40건", status: "신청 완료" },
@@ -30,20 +28,20 @@ const ALL_ITEMS: DispatchItem[] = [
   { id:  "2", date: "2026년 6월 11일(목)", rawDate: "2026-06-11", round: "2회차", region: "서울특별시 마포구",  jobType: "배송/반품", quantity: "40 ~ 60건", status: "배차 후보" },
   { id:  "3", date: "2026년 6월 10일(수)", rawDate: "2026-06-10", round: "1회차", region: "서울특별시 서초구",  jobType: "배송/반품", quantity: "20 ~ 40건", status: "배차 확정" },
   { id:  "4", date: "2026년 6월 9일(화)",  rawDate: "2026-06-09", round: "1회차", region: "서울특별시 송파구",  jobType: "배송/반품", quantity: "60건 이상",  status: "미배차"   },
-  { id:  "5", date: "2026년 6월 8일(월)",  rawDate: "2026-06-08", round: "2회차", region: "서울특별시 강동구",  jobType: "배송/반품", quantity: "40 ~ 60건", status: "추가 배차", additionalType: "urgent" },
+  { id:  "5", date: "2026년 6월 8일(월)",  rawDate: "2026-06-08", round: "2회차", region: "서울특별시 강동구",  jobType: "배송/반품", quantity: "40 ~ 60건", status: "추가 배차" },
   { id:  "6", date: "2026년 6월 7일(일)",  rawDate: "2026-06-07", round: "1회차", region: "서울특별시 용산구",  jobType: "배송/반품", quantity: "20 ~ 40건", status: "신청 완료" },
   { id:  "7", date: "2026년 6월 6일(토)",  rawDate: "2026-06-06", round: "1회차", region: "서울특별시 종로구",  jobType: "배송/반품", quantity: "20 ~ 40건", status: "배차 후보" },
   { id:  "8", date: "2026년 6월 5일(금)",  rawDate: "2026-06-05", round: "2회차", region: "서울특별시 강남구",  jobType: "배송/반품", quantity: "40 ~ 60건", status: "배차 확정" },
   { id:  "9", date: "2026년 6월 4일(목)",  rawDate: "2026-06-04", round: "1회차", region: "서울특별시 서초구",  jobType: "배송/반품", quantity: "20 ~ 40건", status: "배차 후보" },
   { id: "10", date: "2026년 6월 3일(수)",  rawDate: "2026-06-03", round: "2회차", region: "서울특별시 송파구",  jobType: "배송/반품", quantity: "60건 이상",  status: "미배차"   },
-  { id: "11", date: "2026년 6월 2일(화)",  rawDate: "2026-06-02", round: "1회차", region: "서울특별시 강동구",  jobType: "배송/반품", quantity: "20 ~ 40건", status: "추가 배차", additionalType: "zrank" },
+  { id: "11", date: "2026년 6월 2일(화)",  rawDate: "2026-06-02", round: "1회차", region: "서울특별시 강동구",  jobType: "배송/반품", quantity: "20 ~ 40건", status: "추가 배차" },
   { id: "12", date: "2026년 6월 1일(월)",  rawDate: "2026-06-01", round: "1회차", region: "서울특별시 마포구",  jobType: "배송/반품", quantity: "40 ~ 60건", status: "배차 확정" },
   { id: "13", date: "2026년 5월 31일(일)", rawDate: "2026-05-31", round: "2회차", region: "서울특별시 용산구",  jobType: "배송/반품", quantity: "20 ~ 40건", status: "미배차"   },
   { id: "14", date: "2026년 5월 30일(토)", rawDate: "2026-05-30", round: "1회차", region: "경기도 성남시",      jobType: "배송/반품", quantity: "20 ~ 40건", status: "배차 확정" },
   { id: "15", date: "2026년 5월 29일(금)", rawDate: "2026-05-29", round: "2회차", region: "경기도 수원시",      jobType: "배송/반품", quantity: "40 ~ 60건", status: "신청 완료" },
   { id: "16", date: "2026년 5월 28일(목)", rawDate: "2026-05-28", round: "1회차", region: "서울특별시 강남구",  jobType: "배송/반품", quantity: "20 ~ 40건", status: "미배차"   },
   { id: "17", date: "2026년 5월 27일(수)", rawDate: "2026-05-27", round: "1회차", region: "서울특별시 서초구",  jobType: "배송/반품", quantity: "60건 이상",  status: "배차 확정" },
-  { id: "18", date: "2026년 5월 26일(화)", rawDate: "2026-05-26", round: "2회차", region: "서울특별시 마포구",  jobType: "배송/반품", quantity: "40 ~ 60건", status: "추가 배차", additionalType: "urgent" },
+  { id: "18", date: "2026년 5월 26일(화)", rawDate: "2026-05-26", round: "2회차", region: "서울특별시 마포구",  jobType: "배송/반품", quantity: "40 ~ 60건", status: "추가 배차" },
   { id: "19", date: "2026년 5월 25일(월)", rawDate: "2026-05-25", round: "1회차", region: "경기도 성남시",      jobType: "배송/반품", quantity: "20 ~ 40건", status: "미배차"   },
   { id: "20", date: "2026년 5월 24일(일)", rawDate: "2026-05-24", round: "2회차", region: "서울특별시 강동구",  jobType: "배송/반품", quantity: "20 ~ 40건", status: "배차 확정" },
 ];
@@ -112,7 +110,6 @@ function MiniCalendar({
 
   return (
     <div className="bg-white px-3 pt-2.5 pb-2">
-      {/* 월 헤더 */}
       <div className="flex items-center justify-between mb-2">
         <button onClick={onPrev} className="p-1 text-[#8E8E93]">
           <svg width="7" height="12" viewBox="0 0 8 13" fill="none">
@@ -127,7 +124,6 @@ function MiniCalendar({
         </button>
       </div>
 
-      {/* 요일 헤더 */}
       <div className="grid grid-cols-7 mb-1">
         {DAY_NAMES.map((d, i) => (
           <div key={d} className={`text-center text-[11px] font-medium py-0.5 ${
@@ -136,7 +132,6 @@ function MiniCalendar({
         ))}
       </div>
 
-      {/* 날짜 셀 */}
       <div className="grid grid-cols-7">
         {cells.map((day, idx) => {
           if (!day) return <div key={`e-${idx}`} className="h-8" />;
@@ -145,7 +140,6 @@ function MiniCalendar({
           const isToday = raw === todayRaw;
           const hasDot = markedDates.has(raw);
           const dow = idx % 7;
-
           const isDisabled = raw > MAX_DATE;
 
           return (
@@ -184,16 +178,29 @@ function DispatchListContent() {
   const router = useRouter();
   const today = new Date();
 
-  const [calYear, setCalYear]       = useState(today.getFullYear());
-  const [calMonth, setCalMonth]     = useState(today.getMonth());
+  const [allItems, setAllItems]       = useState<DispatchItem[]>(STATIC_ITEMS);
+  const [calYear, setCalYear]         = useState(today.getFullYear());
+  const [calMonth, setCalMonth]       = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [cancelId, setCancelId]     = useState<string | null>(null);
+  const [cancelId, setCancelId]       = useState<string | null>(null);
   const [cancelSuccess, setCancelSuccess] = useState(false);
   const [showCutoffPopup, setShowCutoffPopup] = useState(false);
-  const [additionalPopup, setAdditionalPopup] = useState<AdditionalType | null>(null);
-  const [toast, setToast]           = useState<string | null>(null);
+  const [toast, setToast]             = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // 긴급 구인으로 즉시 확정된 항목 localStorage에서 로드
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("urgent_confirmed_items");
+      if (raw) {
+        const extra: DispatchItem[] = JSON.parse(raw);
+        setAllItems([...extra, ...STATIC_ITEMS]);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -201,21 +208,19 @@ function DispatchListContent() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  // 날짜 선택 시 visible count 초기화
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
   }, [selectedDate]);
 
-  const markedDates = new Set(ALL_ITEMS.map((i) => i.rawDate));
+  const markedDates = new Set(allItems.map((i) => i.rawDate));
 
   const filtered = selectedDate
-    ? ALL_ITEMS.filter((i) => i.rawDate === selectedDate)
-    : ALL_ITEMS;
+    ? allItems.filter((i) => i.rawDate === selectedDate)
+    : allItems;
 
   const displayed = selectedDate ? filtered : filtered.slice(0, visibleCount);
   const hasMore   = !selectedDate && visibleCount < filtered.length;
 
-  // 무한 스크롤 감지
   useEffect(() => {
     if (!hasMore || !sentinelRef.current) return;
     const observer = new IntersectionObserver(
@@ -239,7 +244,7 @@ function DispatchListContent() {
     else setCalMonth((m) => m + 1);
   }
 
-  const cancelTarget = ALL_ITEMS.find((i) => i.id === cancelId);
+  const cancelTarget = allItems.find((i) => i.id === cancelId);
 
   return (
     <div className="flex justify-center items-start min-h-screen bg-[#1a1a1a]">
@@ -274,7 +279,7 @@ function DispatchListContent() {
         {/* 목록 */}
         <div className="flex-1 overflow-y-auto px-4 pt-3 pb-4 space-y-2.5">
 
-          {/* 정책 안내 — 컴팩트 */}
+          {/* 정책 안내 */}
           <div className="bg-white rounded-xl px-3 py-2 flex items-center gap-2">
             <p className="text-[11.5px] text-[#3C3C43] leading-relaxed flex-1">
               한 회차에 한 지역만 근무할 수 있으며, 확정 업무가 있을 경우 추가 신청이 불가합니다.
@@ -303,25 +308,15 @@ function DispatchListContent() {
 
           {/* 배차 카드 */}
           {displayed.map((item) => {
-            const status = resolveStatus(item, ALL_ITEMS);
+            const status = resolveStatus(item, allItems);
             const st = STATUS_STYLE[status];
             return (
               <div key={item.id} className="bg-white rounded-2xl px-4 py-4">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[15px] font-bold text-[#1C1C1E]">{item.date}</span>
-                  {status === "추가 배차" && item.additionalType === "zrank" ? (
-                    <button
-                      onClick={() => setAdditionalPopup("zrank")}
-                      className="text-[12px] font-semibold px-2.5 py-1 rounded-full"
-                      style={{ color: st.color, backgroundColor: st.bg }}
-                    >
-                      {status}
-                    </button>
-                  ) : (
-                    <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full" style={{ color: st.color, backgroundColor: st.bg }}>
-                      {status}
-                    </span>
-                  )}
+                  <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full" style={{ color: st.color, backgroundColor: st.bg }}>
+                    {status}
+                  </span>
                 </div>
                 <div className="space-y-1.5">
                   {[
@@ -401,7 +396,7 @@ function DispatchListContent() {
           </div>
         )}
 
-        {/* 13시 이후 취소 시도 센터 팝업 */}
+        {/* 13시 이후 취소 시도 팝업 */}
         {showCutoffPopup && (
           <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center px-6">
             <div className="w-full max-w-[295px] bg-white rounded-3xl px-6 py-7 shadow-xl text-center">
@@ -425,32 +420,7 @@ function DispatchListContent() {
           </div>
         )}
 
-        {/* 추가 배차 안내 팝업 (Z랭크) */}
-        {additionalPopup && (
-          <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center px-6" onClick={() => setAdditionalPopup(null)}>
-            <div className="w-full max-w-[295px] bg-white rounded-3xl px-6 py-7 shadow-xl text-center" onClick={(e) => e.stopPropagation()}>
-              <div className="w-14 h-14 rounded-full bg-[#FFF4E5] flex items-center justify-center mx-auto mb-4">
-                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                  <path d="M14 9v6M14 19h.01" stroke="#FF9500" strokeWidth="2.2" strokeLinecap="round"/>
-                  <circle cx="14" cy="14" r="11" stroke="#FF9500" strokeWidth="2"/>
-                </svg>
-              </div>
-              <h3 className="text-[17px] font-bold text-[#1C1C1E] mb-2">운영센터 연락 필요</h3>
-              <p className="text-[13px] text-[#8E8E93] mb-6 leading-relaxed">
-                Z랭크 기사님의 추가 배차는<br/>자동 확정되지 않습니다.<br/>
-                <span className="text-[#FF9500] font-semibold">운영센터로 직접 연락해주세요.</span>
-              </p>
-              <button
-                onClick={() => setAdditionalPopup(null)}
-                className="w-full h-[48px] rounded-2xl bg-[#6262EE] text-white text-[15px] font-semibold"
-              >
-                확인
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* 취소 완료 센터 팝업 */}
+        {/* 취소 완료 팝업 */}
         {cancelSuccess && (
           <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center px-6">
             <div className="w-full max-w-[295px] bg-white rounded-3xl px-6 py-7 shadow-xl text-center">

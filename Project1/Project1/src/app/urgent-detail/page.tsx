@@ -1,6 +1,7 @@
 "use client";
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import type { DispatchItem } from "@/app/dispatch-list/page";
 import StatusBar from "@/components/StatusBar";
 import HomeIndicator from "@/components/HomeIndicator";
 
@@ -38,11 +39,17 @@ const DELIVERY_ZONES: Record<string, { area: string; x: number; y: number }[]> =
   ],
 };
 
+// DB 랭크 조회 시뮬레이션 — demo=zrank URL 파라미터로 Z랭크 시나리오 테스트
+async function fetchUserRank(isZRankDemo: boolean): Promise<string> {
+  return new Promise((resolve) => setTimeout(() => resolve(isZRankDemo ? "Z" : "A"), 600));
+}
+
 function UrgentDetailContent() {
   const router = useRouter();
   const params = useSearchParams();
   const id = params.get("id") || "1";
   const post = POSTS[id] || POSTS["1"];
+  const isZRankDemo = params.get("demo") === "zrank";
 
   const [applying, setApplying] = useState(false);
   const [showPenalty, setShowPenalty] = useState(false);
@@ -50,8 +57,8 @@ function UrgentDetailContent() {
   const [showMap, setShowMap] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showFull, setShowFull] = useState(false);
+  const [showContactOps, setShowContactOps] = useState(false);
 
-  // 회차별 유닛 도착 기준 시각
   const unitArrivalTime = post.round === 1 ? "PM 19:00" : "AM 01:00";
 
   const remain = post.total - post.filled;
@@ -61,17 +68,48 @@ function UrgentDetailContent() {
       ? (post.basePrice + post.promoPrice) * post.volume
       : baseEarning + post.promoPrice;
 
-  const handleApply = () => {
+  const handleApply = async () => {
     setShowConfirm(false);
     if (remain <= 0) {
       setShowFull(true);
       return;
     }
     setApplying(true);
-    setTimeout(() => {
-      setApplying(false);
-      setShowSuccess(true);
-    }, 800);
+    const rank = await fetchUserRank(isZRankDemo);
+    setApplying(false);
+
+    if (rank === "Z") {
+      setShowContactOps(true);
+      return;
+    }
+
+    // 일반 랭크: 즉시 확정 후 dispatch-list에 추가 배차로 저장
+    const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
+    const rawDate = post.date
+      .replace("년 ", "-").replace("월 ", "-").replace(/일.*/, "")
+      .split("-").map((p, i) => i > 0 ? p.padStart(2, "0") : p).join("-");
+    const d = new Date(rawDate + "T00:00:00");
+    const displayDate = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일(${DAY_NAMES[d.getDay()]})`;
+
+    const newItem: DispatchItem = {
+      id: `urgent-${id}-${Date.now()}`,
+      date: displayDate,
+      rawDate,
+      round: post.round === 1 ? "1회차" : "2회차",
+      region: `서울특별시 ${post.sector}`,
+      jobType: "배송/반품",
+      quantity: `약 ${post.volume}건`,
+      status: "추가 배차",
+    };
+
+    try {
+      const existing = JSON.parse(localStorage.getItem("urgent_confirmed_items") || "[]");
+      localStorage.setItem("urgent_confirmed_items", JSON.stringify([newItem, ...existing]));
+    } catch {
+      // ignore
+    }
+
+    setShowSuccess(true);
   };
 
   return (
@@ -430,6 +468,31 @@ function UrgentDetailContent() {
               </button>
             </div>
             <HomeIndicator />
+          </div>
+        </div>
+      )}
+
+      {/* ── 운영센터 연락 팝업 (랭크 미노출) ── */}
+      {showContactOps && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-6">
+          <div className="w-full max-w-[323px] bg-white rounded-3xl px-6 py-8 flex flex-col items-center text-center shadow-xl">
+            <div className="w-16 h-16 rounded-full bg-[#FFF4E5] flex items-center justify-center mb-4">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <path d="M16 10v8M16 24v1" stroke="#FF9500" strokeWidth="2.5" strokeLinecap="round"/>
+                <circle cx="16" cy="16" r="13" stroke="#FF9500" strokeWidth="2.5"/>
+              </svg>
+            </div>
+            <h3 className="text-[20px] font-bold text-[#1C1C1E] mb-2">신청이 불가합니다</h3>
+            <p className="text-[14px] text-[#8E8E93] leading-relaxed mb-7">
+              현재 긴급 구인 자동 배차가 어렵습니다.<br/>
+              <span className="text-[#FF9500] font-semibold">운영센터로 연락해주세요.</span>
+            </p>
+            <button
+              onClick={() => setShowContactOps(false)}
+              className="w-full h-[52px] rounded-[14px] bg-[#6262EE] text-white text-[17px] font-semibold active:opacity-80"
+            >
+              확인
+            </button>
           </div>
         </div>
       )}
