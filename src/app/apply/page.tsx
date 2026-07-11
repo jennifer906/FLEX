@@ -114,8 +114,8 @@ export default function ApplyPage() {
             <p className="text-[13px] font-semibold text-[#1C1C1E] mb-2">신청 회차</p>
             <div className="flex gap-2">
               {([
-                { id: "1회차", label: "1회차", sub: "주간 PM 19:00~24:00" },
-                { id: "2회차", label: "2회차", sub: "야간 AM 00:00~07:00" },
+                { id: "1회차", label: "1회차", sub: "당일 PM 19:00~24:00" },
+                { id: "2회차", label: "2회차", sub: "새벽 AM 00:00~07:00" },
               ] as const).map((r) => (
                 <button
                   key={r.id}
@@ -330,7 +330,7 @@ export default function ApplyPage() {
             </div>
             <h3 className="text-[20px] font-bold text-[#1C1C1E] mb-2">배차 신청이 완료되었습니다.</h3>
             <p className="text-[14px] text-[#8E8E93] leading-relaxed mb-7">
-              15분 내로 AI가 배차를 확정하여<br/>알림톡으로 알려드릴게요.
+              15분 내로 AI가 배차를 확정하여<br/>Push알림으로 알려드릴게요.
             </p>
             <button
               onClick={() => router.push("/dispatch-list")}

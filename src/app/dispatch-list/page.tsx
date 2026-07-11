@@ -21,8 +21,8 @@ export interface DispatchItem {
 
 // ─── 샘플 데이터 ─────────────────────────────────────────────────────
 const STATIC_ITEMS: DispatchItem[] = [
-  { id: "23", date: "2026년 6월 14일(일)", rawDate: "2026-06-14", round: "1회차", region: "서울특별시 용산구",  jobType: "배송/반품", quantity: "20 ~ 40건", status: "배차 후보", cutoffPassed: true  },
-  { id: "22", date: "2026년 6월 13일(토)", rawDate: "2026-06-13", round: "2회차", region: "서울특별시 종로구",  jobType: "배송/반품", quantity: "40 ~ 60건", status: "배차 후보", cutoffPassed: false },
+  { id: "23", date: "2026년 6월 15일(월)", rawDate: "2026-06-15", round: "1회차", region: "서울특별시 용산구",  jobType: "배송/반품", quantity: "20 ~ 40건", status: "배차 후보", cutoffPassed: true  },
+  { id: "22", date: "2026년 6월 15일(월)", rawDate: "2026-06-15", round: "2회차", region: "서울특별시 종로구",  jobType: "배송/반품", quantity: "40 ~ 60건", status: "배차 후보", cutoffPassed: false },
   { id:  "1", date: "2026년 6월 12일(금)", rawDate: "2026-06-12", round: "1회차", region: "서울특별시 강남구",  jobType: "배송/반품", quantity: "20 ~ 40건", status: "신청 완료" },
   { id: "21", date: "2026년 6월 11일(목)", rawDate: "2026-06-11", round: "2회차", region: "서울특별시 서초구",  jobType: "배송/반품", quantity: "20 ~ 40건", status: "배차 확정" },
   { id:  "2", date: "2026년 6월 11일(목)", rawDate: "2026-06-11", round: "2회차", region: "서울특별시 마포구",  jobType: "배송/반품", quantity: "40 ~ 60건", status: "배차 후보" },
@@ -63,6 +63,14 @@ const MAX_DATE = (() => {
   d.setDate(d.getDate() + 6);
   return d.toISOString().split("T")[0];
 })();
+const MIN_DATE = (() => {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+})();
+const MIN_CAL_YEAR  = parseInt(MIN_DATE.split("-")[0]);
+const MIN_CAL_MONTH = parseInt(MIN_DATE.split("-")[1]) - 1;
 
 function resolveStatus(item: DispatchItem, allItems: DispatchItem[]): ItemStatus {
   if (item.status === "배차 후보") {
@@ -111,7 +119,11 @@ function MiniCalendar({
   return (
     <div className="bg-white px-3 pt-2.5 pb-2">
       <div className="flex items-center justify-between mb-2">
-        <button onClick={onPrev} className="p-1 text-[#8E8E93]">
+        <button
+          onClick={onPrev}
+          disabled={year === MIN_CAL_YEAR && month === MIN_CAL_MONTH}
+          className="p-1 text-[#8E8E93] disabled:opacity-30"
+        >
           <svg width="7" height="12" viewBox="0 0 8 13" fill="none">
             <path d="M7 1L1.5 6.5L7 12" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
@@ -140,7 +152,7 @@ function MiniCalendar({
           const isToday = raw === todayRaw;
           const hasDot = markedDates.has(raw);
           const dow = idx % 7;
-          const isDisabled = raw > MAX_DATE;
+          const isDisabled = raw > MAX_DATE || raw < MIN_DATE;
 
           return (
             <button
@@ -236,6 +248,7 @@ function DispatchListContent() {
   }
 
   function handlePrevMonth() {
+    if (calYear === MIN_CAL_YEAR && calMonth === MIN_CAL_MONTH) return;
     if (calMonth === 0) { setCalYear((y) => y - 1); setCalMonth(11); }
     else setCalMonth((m) => m - 1);
   }
@@ -289,13 +302,10 @@ function DispatchListContent() {
 
           {/* 선택 날짜 표시 */}
           {selectedDate && (
-            <div className="flex items-center justify-between px-1">
+            <div className="px-1">
               <span className="text-[13px] font-semibold text-[#1C1C1E]">
                 {formatDisplayDate(selectedDate)} 내역
               </span>
-              <button onClick={() => setSelectedDate(null)} className="text-[12px] text-[#6262EE] font-medium">
-                전체 보기
-              </button>
             </div>
           )}
 
@@ -408,7 +418,7 @@ function DispatchListContent() {
               </div>
               <h3 className="text-[17px] font-bold text-[#1C1C1E] mb-2">취소가 불가능해요</h3>
               <p className="text-[13px] text-[#8E8E93] mb-6 leading-relaxed">
-                13시 이후에는 직접 취소가 어렵습니다.<br/>운영센터로 연락해주세요.
+                13시 이후에는 직접 취소가 어렵습니다.<br/>1:1 문의하기로 연락해주세요.
               </p>
               <button
                 onClick={() => setShowCutoffPopup(false)}

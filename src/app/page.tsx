@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import StatusBar from "@/components/StatusBar";
 import HomeIndicator from "@/components/HomeIndicator";
+import DeliveryListView from "@/components/views/DeliveryListView";
 
 type BottomTab = "지도" | "박스 목록" | "배송 목록" | "계정 관리";
 
@@ -90,7 +91,7 @@ function AccountTab() {
               </span>
             </div>
           </div>
-          <button className="mt-1 border border-white/50 rounded-lg px-3 py-1.5 flex items-center gap-1.5">
+          <button onClick={() => router.push("/notifications")} className="mt-1 border border-white/50 rounded-lg px-3 py-1.5 flex items-center gap-1.5">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"
                 stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -102,55 +103,52 @@ function AccountTab() {
       </div>
 
       {/* 네비게이션 카드 영역 */}
-      <div className="mx-3 -mt-5 space-y-2.5">
+      <div className="mx-3 -mt-5 bg-white rounded-2xl shadow-sm overflow-hidden">
 
         {/* AI 배차 신청 */}
         <button
           onClick={() => router.push("/apply")}
-          className="w-full bg-white rounded-2xl px-4 py-4 shadow-sm active:opacity-80 flex items-center justify-between"
+          className="w-full px-4 py-4 active:bg-[#F7F7FA] flex items-center justify-between"
         >
-          <div className="text-left">
-            <p className="text-[16px] font-bold text-[#1C1C1E]">AI 배차 신청</p>
-            <p className="text-[13px] text-[#8E8E93] mt-0.5">신청 후 15분 내 배차 결과를 알려드려요</p>
+          <span className="text-[16px] font-bold text-[#1C1C1E]">AI 배차 신청</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[13px] text-[#8E8E93]">15분 내 결과 안내</span>
+            <ChevronRight />
           </div>
-          <ChevronRight />
         </button>
 
         {/* 긴급 구인 */}
         <button
           onClick={() => router.push("/urgent-list")}
-          className="w-full bg-white rounded-2xl px-4 py-4 shadow-sm active:opacity-80 flex items-center justify-between border border-[#6262EE]/15"
+          className="w-full px-4 py-4 active:bg-[#F7F7FA] flex items-center justify-between border-t border-[#F2F2F7]"
         >
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[#EFEFFD] flex items-center justify-center flex-shrink-0">
-              <span className="text-base leading-none">⚡</span>
-            </div>
-            <div className="text-left">
-              <p className="text-[16px] font-bold text-[#6262EE]">긴급 구인</p>
-              <p className="text-[13px] text-[#8E8E93] mt-0.5">추가 보상과 함께 바로 신청하세요</p>
-            </div>
+          <span className="text-[16px] font-bold text-[#6262EE] flex items-center gap-1.5">
+            <span className="text-base leading-none">⚡</span> 잔여 배차 신청
+          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[13px] text-[#8E8E93]">신청 즉시 확정</span>
+            <ChevronRight />
           </div>
-          <ChevronRight />
         </button>
 
         {/* 신청 내역 */}
         <button
           onClick={() => router.push("/dispatch-list")}
-          className="w-full bg-white rounded-2xl px-4 py-4 shadow-sm active:opacity-80 flex items-center justify-between"
+          className="w-full px-4 py-4 active:bg-[#F7F7FA] flex items-center justify-between border-t border-[#F2F2F7]"
         >
-          <p className="text-[16px] font-bold text-[#1C1C1E]">신청 내역</p>
+          <span className="text-[16px] font-bold text-[#1C1C1E]">신청 내역</span>
           <ChevronRight />
         </button>
+      </div>
 
-        {/* 수신 설정 / 공지사항 */}
-        <div className="grid grid-cols-2 gap-2.5">
-          {["수신 설정", "공지사항"].map((label) => (
-            <button key={label}
-              className="bg-white rounded-2xl py-4 text-center shadow-sm active:opacity-70">
-              <span className="text-[14px] font-semibold text-[#1C1C1E]">{label}</span>
-            </button>
-          ))}
-        </div>
+      {/* 배송 이력 / 수신 설정 / 공지사항 */}
+      <div className="mx-3 mt-2.5 grid grid-cols-3 gap-2.5">
+        {["배송 이력", "수신 설정", "공지사항"].map((label) => (
+          <button key={label}
+            className="bg-white rounded-2xl py-4 text-center shadow-sm active:opacity-70">
+            <span className="text-[14px] font-semibold text-[#1C1C1E]">{label}</span>
+          </button>
+        ))}
       </div>
 
       {/* 필수 정보 */}
@@ -162,12 +160,9 @@ function AccountTab() {
             { label: "안전모 인증",         value: "미인증", valueColor: "#6262EE" },
           ].map((item, i) => (
             <div key={item.label}
-              className={`flex items-center justify-between px-4 py-4 ${i > 0 ? "border-t border-[#F2F2F7]" : ""}`}>
-              <div>
-                <p className="text-[14px] text-[#1C1C1E]">{item.label}</p>
-                <p className="text-[13px] mt-0.5" style={{ color: item.valueColor }}>{item.value}</p>
-              </div>
-              <ChevronRight />
+              className={`px-4 py-4 ${i > 0 ? "border-t border-[#F2F2F7]" : ""}`}>
+              <p className="text-[14px] text-[#1C1C1E]">{item.label}</p>
+              <p className="text-[13px] mt-0.5" style={{ color: item.valueColor }}>{item.value}</p>
             </div>
           ))}
         </div>
@@ -185,14 +180,11 @@ function AccountTab() {
             { label: "배송 및 앱 사용법", value: "",                valueColor: "#8E8E93" },
           ].map((item, i) => (
             <div key={item.label}
-              className={`flex items-center justify-between px-4 py-4 ${i > 0 ? "border-t border-[#F2F2F7]" : ""}`}>
-              <div>
-                <p className="text-[14px] text-[#1C1C1E]">{item.label}</p>
-                {item.value && (
-                  <p className="text-[13px] mt-0.5" style={{ color: item.valueColor }}>{item.value}</p>
-                )}
-              </div>
-              <ChevronRight />
+              className={`px-4 py-4 ${i > 0 ? "border-t border-[#F2F2F7]" : ""}`}>
+              <p className="text-[14px] text-[#1C1C1E]">{item.label}</p>
+              {item.value && (
+                <p className="text-[13px] mt-0.5" style={{ color: item.valueColor }}>{item.value}</p>
+              )}
             </div>
           ))}
         </div>
@@ -219,7 +211,7 @@ export default function Home() {
         <div className="flex-1 flex flex-col overflow-hidden">
           {activeTab === "지도"      && <InactivePlaceholder label="지도" />}
           {activeTab === "박스 목록" && <InactivePlaceholder label="박스 목록" />}
-          {activeTab === "배송 목록" && <InactivePlaceholder label="배송 목록" />}
+          {activeTab === "배송 목록" && <DeliveryListView />}
           {activeTab === "계정 관리" && <AccountTab />}
         </div>
         <div className="flex-shrink-0 bg-white border-t border-[#E5E5EA]">
