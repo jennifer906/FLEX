@@ -1,21 +1,17 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import AccessHistoryCard from "@/components/AccessHistoryCard";
+import {
+  ACCESS_HISTORY,
+  isWithinLast3Months,
+  byRecommendation,
+  type AccessHistoryEntry,
+} from "@/lib/accessHistory";
 
 type AccessOption = "자유 출입" | "공용 공동현관 비밀번호" | "경비실 호출";
 // 이력/검색은 "같은 데이터를 다르게 보는 것"일 뿐이라 탭을 나누지 않고 하나(lookup)로 합친다.
 // 등록/수정은 별개 작업(입력)이라 별도 탭으로 유지한다.
 type AccessTab = "lookup" | "edit";
-
-interface AccessHistoryEntry {
-  id: string;
-  complexId: string;
-  dong: string;
-  code: string;
-  date: string;
-  phone: string;
-  initialUp: number;
-  initialDown: number;
-}
 
 interface DeliveryBox {
   id: string;
@@ -115,50 +111,6 @@ const DELIVERIES: DeliveryItem[] = [
   },
 ];
 
-// 단지(complexId) 단위로 스코프해서, 배송지와 같은 동 기록 / 같은 단지의 다른 동 기록을 구분해 보여준다.
-// 실제로 같은 단지는 동마다 공동현관 비밀번호가 같은 경우가 많아, 다른 동 기록도 유효한 단서가 된다.
-// 같은 동에 등록된 정보가 많을 수 있어(최신 3개월 전체 노출) 목동9(동문굿모닝탑I) 9동에 예시를 넉넉히 넣어둔다.
-// 카드 안에는 어느 동인지(동 배지/섹션 라벨) 다시 쓰지 않고 비밀번호만 노출한다 - 중복이라서.
-const ACCESS_HISTORY: AccessHistoryEntry[] = [
-  { id: "h1", complexId: "dongmoon-mokdong", dong: "9동", code: "1234#", date: "2026-07-06", phone: "0105508****", initialUp: 8, initialDown: 1 },
-  { id: "h1b", complexId: "dongmoon-mokdong", dong: "9동", code: "1234#", date: "2026-06-28", phone: "0107712****", initialUp: 6, initialDown: 0 },
-  { id: "h1c", complexId: "dongmoon-mokdong", dong: "9동", code: "5521#", date: "2026-06-15", phone: "0103391****", initialUp: 5, initialDown: 1 },
-  { id: "h1d", complexId: "dongmoon-mokdong", dong: "9동", code: "1234#", date: "2026-06-01", phone: "0108820****", initialUp: 4, initialDown: 0 },
-  { id: "h1e", complexId: "dongmoon-mokdong", dong: "9동", code: "1234#", date: "2026-05-20", phone: "0106654****", initialUp: 7, initialDown: 2 },
-  { id: "h1f", complexId: "dongmoon-mokdong", dong: "9동", code: "9012#", date: "2026-05-10", phone: "0104433****", initialUp: 2, initialDown: 0 },
-  { id: "h1g", complexId: "dongmoon-mokdong", dong: "9동", code: "1234#", date: "2026-04-25", phone: "0102290****", initialUp: 3, initialDown: 1 },
-  { id: "h1h", complexId: "dongmoon-mokdong", dong: "9동", code: "1234#", date: "2026-04-15", phone: "0109981****", initialUp: 1, initialDown: 0 },
-  { id: "h1i", complexId: "dongmoon-mokdong", dong: "9동", code: "5521#", date: "2026-04-11", phone: "0105567****", initialUp: 2, initialDown: 2 },
-  // 같은 동 5건+더보기 데모용 예시 5건(전부 3개월 이내, 서로 다른 코드)
-  { id: "h1m", complexId: "dongmoon-mokdong", dong: "9동", code: "6789#", date: "2026-06-25", phone: "0107788****", initialUp: 4, initialDown: 0 },
-  { id: "h1n", complexId: "dongmoon-mokdong", dong: "9동", code: "4321#", date: "2026-05-30", phone: "0102233****", initialUp: 3, initialDown: 1 },
-  { id: "h1o", complexId: "dongmoon-mokdong", dong: "9동", code: "8765#", date: "2026-05-05", phone: "0106611****", initialUp: 6, initialDown: 0 },
-  { id: "h1p", complexId: "dongmoon-mokdong", dong: "9동", code: "2468#", date: "2026-04-28", phone: "0104455****", initialUp: 2, initialDown: 0 },
-  { id: "h1q", complexId: "dongmoon-mokdong", dong: "9동", code: "1357#", date: "2026-04-15", phone: "0109900****", initialUp: 1, initialDown: 1 },
-  // 아래 3개는 3개월(2026-04-10)보다 오래돼서 목록에서 자동으로 빠져야 한다(추천수는 일부러 높게 잡아 필터가 정렬보다 우선임을 보여줌)
-  { id: "h1j", complexId: "dongmoon-mokdong", dong: "9동", code: "0000#", date: "2026-03-20", phone: "0101111****", initialUp: 9, initialDown: 0 },
-  { id: "h1k", complexId: "dongmoon-mokdong", dong: "9동", code: "3333#", date: "2026-02-14", phone: "0102222****", initialUp: 5, initialDown: 0 },
-  { id: "h1l", complexId: "dongmoon-mokdong", dong: "9동", code: "7777#", date: "2026-01-01", phone: "0103333****", initialUp: 10, initialDown: 0 },
-  { id: "h2", complexId: "dongmoon-mokdong", dong: "5동", code: "8890#", date: "2026-06-20", phone: "0109981****", initialUp: 3, initialDown: 0 },
-  { id: "h3", complexId: "dongmoon-mokdong", dong: "12동", code: "8890#", date: "2026-05-11", phone: "0107744****", initialUp: 1, initialDown: 2 },
-  // 다른 동 5건 추가 데모용 예시(서로 다른 동 + 서로 다른 코드)
-  { id: "h2b", complexId: "dongmoon-mokdong", dong: "3동", code: "1111#", date: "2026-06-10", phone: "0103344****", initialUp: 5, initialDown: 0 },
-  { id: "h2c", complexId: "dongmoon-mokdong", dong: "7동", code: "2222#", date: "2026-05-22", phone: "0108811****", initialUp: 2, initialDown: 0 },
-  { id: "h2d", complexId: "dongmoon-mokdong", dong: "10동", code: "9999#", date: "2026-05-01", phone: "0105566****", initialUp: 4, initialDown: 1 },
-  { id: "h2e", complexId: "dongmoon-mokdong", dong: "6동", code: "4444#", date: "2026-04-20", phone: "0107722****", initialUp: 1, initialDown: 0 },
-  { id: "h2f", complexId: "dongmoon-mokdong", dong: "2동", code: "5555#", date: "2026-04-12", phone: "0109933****", initialUp: 3, initialDown: 2 },
-  { id: "h4", complexId: "daesung-hwagok", dong: "3동", code: "4471#", date: "2026-06-02", phone: "0102231****", initialUp: 4, initialDown: 0 },
-  { id: "h5", complexId: "wellbeing-sangam", dong: "5동", code: "자유 출입", date: "2026-05-18", phone: "0106602****", initialUp: 2, initialDown: 1 },
-];
-
-// 데모 데이터가 2026년 기준으로 맞춰져 있어 실제 브라우저 시각 대신 고정된 기준일로 "최신 3개월"을 계산한다.
-const TODAY_REF = new Date("2026-07-10");
-const THREE_MONTHS_AGO = new Date(TODAY_REF);
-THREE_MONTHS_AGO.setMonth(THREE_MONTHS_AGO.getMonth() - 3);
-function isWithinLast3Months(dateStr: string) {
-  return new Date(dateStr) >= THREE_MONTHS_AGO;
-}
-
 // 고객이 알림톡으로 남긴 정보가 있는지 판단한다 - "정보 없음"이거나 비밀번호 방식인데 코드가 없으면 고객 정보가 없는 것으로 본다.
 function hasCustomerAccessInfo(value: string): boolean {
   if (value === "정보 없음") return false;
@@ -171,18 +123,6 @@ function normalizeHistoryValue(code: string): string {
   if (code.startsWith("자유 출입") || code.startsWith("경비실 호출")) return code;
   const digits = code.replace(/#/g, "").trim();
   return digits ? `공용 공동현관 비밀번호 #${digits}` : "정보 없음";
-}
-
-// 이력 카드에 "몇 월 며칠 등록" 형태로 보여주기 위한 짧은 날짜 포맷.
-function formatHistoryDate(dateStr: string): string {
-  const [, m, d] = dateStr.split("-");
-  return `${parseInt(m, 10)}월 ${parseInt(d, 10)}일`;
-}
-
-// 등록자 전화번호는 이미 뒷 4자리가 마스킹된 채로 저장되어 있다("0105508****") - 가독성을 위해 하이픈만 붙여준다.
-function formatMaskedPhone(phone: string): string {
-  if (phone.length !== 11) return phone;
-  return `${phone.slice(0, 3)}-${phone.slice(3, 7)}-${phone.slice(7)}`;
 }
 
 // 고객 입력 정보가 없을 때만 쓰는 대체값 - 같은 동 이력 중 좋아요가 가장 많은 이력, 좋아요가 하나도 없으면 가장 최신 이력, 이력 자체가 없으면 정보 없음.
@@ -302,57 +242,6 @@ function AccessIcon({ kind, color, filled }: { kind: AccessIconKind; color: stri
   );
 }
 
-// 등록일·등록자(마스킹)와 좋아요/싫어요를 함께 보여줘 라이더가 "이 비밀번호를 믿을 수 있는지" 스스로 판단할 수 있게 한다.
-// 다른 동 이력은 동 번호가 비밀번호 신뢰도를 판단하는 핵심 단서라 dongLabel로 밝혀서 보여준다.
-// 코드를 탭하면 바로 카드에 적용되고, 좋아요/싫어요는 별도 버튼이라 적용과 분리해 눌러도 시트가 안 닫힌다.
-function AccessHistoryCard({
-  entry,
-  dongLabel,
-  votes,
-  onApply,
-  onVote,
-}: {
-  entry: AccessHistoryEntry;
-  dongLabel?: string;
-  votes: { up: number; down: number; userVote: "up" | "down" | null };
-  onApply: (entry: AccessHistoryEntry) => void;
-  onVote: (entry: AccessHistoryEntry, direction: "up" | "down") => void;
-}) {
-  return (
-    <div className="w-full bg-white rounded-xl mb-2 border border-[#E5E5EA] pl-4 pr-2.5 py-2.5 flex items-center gap-2">
-      <button onClick={() => onApply(entry)} className="flex-1 min-w-0 text-left active:opacity-70">
-        <div className="flex items-center gap-2">
-          {dongLabel && (
-            <span className="flex-shrink-0 text-[12px] font-bold text-primary bg-[#EFEFFD] rounded-md px-1.5 py-0.5">{dongLabel}</span>
-          )}
-          <p className="text-[17px] font-extrabold text-text-primary truncate">{entry.code}</p>
-        </div>
-        <p className="text-[11.5px] text-text-caption mt-0.5 truncate">
-          {formatHistoryDate(entry.date)} 등록 · {formatMaskedPhone(entry.phone)}
-        </p>
-      </button>
-      <div className="flex items-center gap-1 flex-shrink-0">
-        <button
-          onClick={() => onVote(entry, "up")}
-          className={`flex items-center gap-0.5 h-7 px-2 rounded-full text-[12px] font-bold ${
-            votes.userVote === "up" ? "bg-[#EFEFFD] text-primary" : "bg-[#F2F2F5] text-text-secondary"
-          }`}
-        >
-          👍 {votes.up}
-        </button>
-        <button
-          onClick={() => onVote(entry, "down")}
-          className={`flex items-center gap-0.5 h-7 px-2 rounded-full text-[12px] font-bold ${
-            votes.userVote === "down" ? "bg-[#FFEFEF] text-[#E0483E]" : "bg-[#F2F2F5] text-text-secondary"
-          }`}
-        >
-          👎 {votes.down}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 const TAB_LABEL: Record<AccessTab, string> = {
   lookup: "비밀번호 확인",
   edit: "등록/수정",
@@ -383,6 +272,14 @@ export default function DeliveryListView() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   // 좋아요/싫어요는 라이더 커뮤니티가 등록된 비밀번호의 신뢰도를 직접 검증하는 장치 - 코드별로 카운트와 내 투표 상태를 갖는다.
   const [votes, setVotes] = useState<Record<string, { up: number; down: number; userVote: "up" | "down" | null }>>({});
+  const sheetScrollRef = useRef<HTMLDivElement>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  // "같은 단지 다른 동 비밀번호 보기"는 별도 페이지가 아니라 같은 바텀시트 안에서 화면만 전환한다.
+  const [showOtherDong, setShowOtherDong] = useState(false);
+  const [otherDongQuery, setOtherDongQuery] = useState("");
+  const [otherDongVisibleCount, setOtherDongVisibleCount] = useState(CODE_PAGE_SIZE);
+  const [isLoadingMoreOtherDong, setIsLoadingMoreOtherDong] = useState(false);
+  const otherDongLoadMoreRef = useRef<HTMLDivElement>(null);
 
   function toggleCollapse(id: string) {
     setCollapsedIds((prev) => {
@@ -421,6 +318,10 @@ export default function DeliveryListView() {
     setQuery("");
     setVisibleCount(CODE_PAGE_SIZE);
     setIsLoadingMore(false);
+    setShowOtherDong(false);
+    setOtherDongQuery("");
+    setOtherDongVisibleCount(CODE_PAGE_SIZE);
+    setIsLoadingMoreOtherDong(false);
     const needsAction = getAccessCardStyle(accessValues[id]).icon === "warning";
     setTab(needsAction ? "edit" : "lookup");
     setActiveId(id);
@@ -470,17 +371,6 @@ export default function DeliveryListView() {
     fireToast("출입 정보가 적용되었습니다");
   }
 
-  // 추천 점수 = 👍 +1, 👎 -1. 라이더가 방금 누른 투표까지 즉시 반영해서 정렬한다. 점수가 같으면 최신 등록 순.
-  const scoreOf = (h: AccessHistoryEntry) => {
-    const v = votes[h.id];
-    return v ? v.up - v.down : h.initialUp - h.initialDown;
-  };
-  const byRecommendation = (a: AccessHistoryEntry, b: AccessHistoryEntry) => {
-    const scoreDiff = scoreOf(b) - scoreOf(a);
-    if (scoreDiff !== 0) return scoreDiff;
-    return b.date.localeCompare(a.date);
-  };
-
   const q = query.trim().toLowerCase();
   const matchesQuery = (h: AccessHistoryEntry) => !q || (h.dong + h.code + h.date).toLowerCase().includes(q);
   // 같은 동 이력: 배송지와 동이 같은 기록만 모은다. 동/날짜/전화번호는 라이더에게 불필요해서 빼고,
@@ -490,7 +380,7 @@ export default function DeliveryListView() {
         ACCESS_HISTORY.filter(
           (h) => h.complexId === activeItem.complexId && h.dong === activeItem.dong && isWithinLast3Months(h.date) && matchesQuery(h)
         )
-          .sort(byRecommendation)
+          .sort(byRecommendation(votes))
           .reduce((map, h) => {
             if (!map.has(h.code)) map.set(h.code, h);
             return map;
@@ -500,14 +390,14 @@ export default function DeliveryListView() {
     : [];
   const sameDongCodes = sameDongAll.slice(0, visibleCount);
 
-  // 다른 동 이력: 같은 단지·다른 동 기록. 동마다 비밀번호가 다를 수 있어 카드 자동완성엔 절대 쓰지 않고,
-  // 여기 바텀시트에서만 동 번호를 밝힌 채(dongLabel) 참고용으로 노출한다. 같은 코드라도 동이 다르면 별도 행으로 유지한다.
-  const otherDongAll = activeItem
+  // 같은 단지 다른 동 이력: 바텀시트 안의 별도 화면(showOtherDong)에서 자체 검색창으로 다시 좁혀볼 수 있어
+  // 메인 검색(query)과는 독립적으로 전체 목록을 계산한다.
+  const otherDongBase = activeItem
     ? Array.from(
         ACCESS_HISTORY.filter(
-          (h) => h.complexId === activeItem.complexId && h.dong !== activeItem.dong && isWithinLast3Months(h.date) && matchesQuery(h)
+          (h) => h.complexId === activeItem.complexId && h.dong !== activeItem.dong && isWithinLast3Months(h.date)
         )
-          .sort(byRecommendation)
+          .sort(byRecommendation(votes))
           .reduce((map, h) => {
             const key = `${h.dong}__${h.code}`;
             if (!map.has(key)) map.set(key, h);
@@ -516,6 +406,61 @@ export default function DeliveryListView() {
           .values()
       )
     : [];
+  const otherDongCount = otherDongBase.length;
+  const otherDongQueryLower = otherDongQuery.trim().toLowerCase();
+  const otherDongAll = otherDongQueryLower
+    ? otherDongBase.filter((h) => (h.dong + h.code + h.date).toLowerCase().includes(otherDongQueryLower))
+    : otherDongBase;
+  const otherDongVisible = otherDongAll.slice(0, otherDongVisibleCount);
+
+  // 같은 동 이력 목록의 무한 스크롤 - 시트 스크롤 컨테이너 안에서 하단 감지용 요소가 보이면 다음 페이지를 불러온다.
+  useEffect(() => {
+    if (tab !== "lookup" || showOtherDong) return;
+    const root = sheetScrollRef.current;
+    const sentinel = loadMoreRef.current;
+    if (!root || !sentinel) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !isLoadingMore && visibleCount < sameDongAll.length) {
+          setIsLoadingMore(true);
+          setTimeout(() => {
+            setVisibleCount((v) => Math.min(v + CODE_PAGE_SIZE, sameDongAll.length));
+            setIsLoadingMore(false);
+          }, 400);
+        }
+      },
+      { root, rootMargin: "80px" }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [tab, showOtherDong, visibleCount, isLoadingMore, sameDongAll.length]);
+
+  // 다른 동 이력 목록의 무한 스크롤 (바텀시트 내부 화면 전환 상태에서만 동작)
+  useEffect(() => {
+    if (!showOtherDong) return;
+    const root = sheetScrollRef.current;
+    const sentinel = otherDongLoadMoreRef.current;
+    if (!root || !sentinel) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !isLoadingMoreOtherDong && otherDongVisibleCount < otherDongAll.length) {
+          setIsLoadingMoreOtherDong(true);
+          setTimeout(() => {
+            setOtherDongVisibleCount((v) => Math.min(v + CODE_PAGE_SIZE, otherDongAll.length));
+            setIsLoadingMoreOtherDong(false);
+          }, 400);
+        }
+      },
+      { root, rootMargin: "80px" }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [showOtherDong, otherDongVisibleCount, isLoadingMoreOtherDong, otherDongAll.length]);
+
+  // 다른 동 화면 검색어가 바뀌면 페이지를 처음부터 다시 센다.
+  useEffect(() => {
+    setOtherDongVisibleCount(CODE_PAGE_SIZE);
+  }, [otherDongQueryLower]);
 
   return (
     <div className="flex-1 relative bg-[#F2F2F7]">
@@ -784,32 +729,83 @@ export default function DeliveryListView() {
       {activeItem && (
         <div className="absolute inset-0 bg-black/45 z-50 flex items-end" onClick={() => setActiveId(null)}>
           <div
+            ref={sheetScrollRef}
             className="w-full bg-[#F2F2F7] rounded-t-[20px] pt-2.5 pb-8 max-h-[85%] overflow-y-auto flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-9 h-[4.5px] bg-[#D3D4DA] rounded-full mx-auto mb-3.5 flex-shrink-0" />
 
             <div className="px-5 flex-shrink-0">
-              <h3 className="text-[19px] font-extrabold text-text-primary mb-1">출입 정보</h3>
-              <p className="text-[13px] text-text-caption mb-3.5">{activeItem.addressTitle}</p>
-
-              <div className="flex bg-white rounded-lg p-1 gap-1 mb-4">
-                {(["lookup", "edit"] as AccessTab[]).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setTab(t)}
-                    className={`flex-1 h-9 rounded-md text-[13.5px] font-bold transition-colors ${
-                      tab === t ? "bg-primary text-white" : "text-text-secondary"
-                    }`}
-                  >
-                    {TAB_LABEL[t]}
+              {showOtherDong ? (
+                // 별도 페이지가 아니라 같은 바텀시트 안에서 화면만 전환 - 뒤로가기로 비밀번호 확인 화면으로 복귀한다.
+                <div className="flex items-center gap-2 mb-4">
+                  <button onClick={() => setShowOtherDong(false)} className="p-1 -ml-1 flex-shrink-0 active:opacity-60">
+                    <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
+                      <path d="M7 1L1 7l6 6" stroke="#1C1C1E" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
                   </button>
-                ))}
-              </div>
+                  <h3 className="text-[17px] font-extrabold text-text-primary">같은 단지 다른 동 비밀번호</h3>
+                </div>
+              ) : (
+                <>
+                  <h3 className="text-[19px] font-extrabold text-text-primary mb-1">출입 정보</h3>
+                  <p className="text-[13px] text-text-caption mb-3.5">{activeItem.addressTitle}</p>
+
+                  <div className="flex bg-white rounded-lg p-1 gap-1 mb-4">
+                    {(["lookup", "edit"] as AccessTab[]).map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setTab(t)}
+                        className={`flex-1 h-9 rounded-md text-[13.5px] font-bold transition-colors ${
+                          tab === t ? "bg-primary text-white" : "text-text-secondary"
+                        }`}
+                      >
+                        {TAB_LABEL[t]}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="px-5">
-              {tab === "lookup" && (
+              {showOtherDong && (
+                <div>
+                  <input
+                    value={otherDongQuery}
+                    onChange={(e) => setOtherDongQuery(e.target.value)}
+                    placeholder="동 번호로 좁혀보기 (예) 101동"
+                    className="w-full h-[44px] rounded-[10px] border-[1.4px] border-[#D8DAE0] bg-white px-3.5 text-[14px] mb-4 outline-none focus:border-primary"
+                  />
+
+                  {otherDongAll.length === 0 && (
+                    <p className="text-center text-[13.5px] text-[#A4A6AE] py-8">등록된 다른 동 이력이 없어요.</p>
+                  )}
+
+                  {otherDongAll.length > 0 && (
+                    <div>
+                      <p className="text-[12.5px] font-bold text-text-secondary mb-2">같은 단지 다른 동 {otherDongAll.length}건</p>
+                      {otherDongVisible.map((h) => (
+                        <AccessHistoryCard
+                          key={h.id}
+                          entry={h}
+                          dongLabel={h.dong}
+                          votes={getVoteState(h)}
+                          onApply={applyHistory}
+                          onVote={handleVote}
+                        />
+                      ))}
+                      {otherDongVisibleCount < otherDongAll.length && (
+                        <div ref={otherDongLoadMoreRef} className="py-3 flex justify-center">
+                          {isLoadingMoreOtherDong && <span className="text-[12.5px] text-text-secondary">불러오는 중...</span>}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!showOtherDong && tab === "lookup" && (
                 <div>
                   {/* 이력 조회와 검색은 같은 데이터를 보는 동일한 작업이라 탭을 나누지 않고,
                       검색창을 항상 보이는 실시간 필터로 얹어 목록 위에서 바로 좁혀볼 수 있게 한다. */}
@@ -817,11 +813,10 @@ export default function DeliveryListView() {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="동 번호로 좁혀보기 (예) 101동"
-                    className="w-full h-[44px] rounded-[10px] border-[1.4px] border-[#D8DAE0] bg-white px-3.5 text-[14px] mb-1 outline-none focus:border-primary"
+                    className="w-full h-[44px] rounded-[10px] border-[1.4px] border-[#D8DAE0] bg-white px-3.5 text-[14px] mb-4 outline-none focus:border-primary"
                   />
-                  <p className="text-[11.5px] text-text-caption mb-4">최근 3개월 등록된 정보를 모두 보여드려요.</p>
 
-                  {sameDongAll.length === 0 && otherDongAll.length === 0 && (
+                  {sameDongAll.length === 0 && otherDongCount === 0 && (
                     <p className="text-center text-[13.5px] text-[#A4A6AE] py-8">
                       검색된 이력이 없어요.
                       <br />
@@ -829,7 +824,7 @@ export default function DeliveryListView() {
                     </p>
                   )}
 
-                  {(sameDongAll.length > 0 || otherDongAll.length > 0) && (
+                  {(sameDongAll.length > 0 || otherDongCount > 0) && (
                     <div>
                       <p className="text-[12.5px] font-bold text-text-secondary mb-2">
                         같은 단지 같은 동 {sameDongAll.length}건
@@ -843,48 +838,33 @@ export default function DeliveryListView() {
                             <AccessHistoryCard key={h.id} entry={h} votes={getVoteState(h)} onApply={applyHistory} onVote={handleVote} />
                           ))}
                           {visibleCount < sameDongAll.length && (
-                            <button
-                              disabled={isLoadingMore}
-                              onClick={() => {
-                                setIsLoadingMore(true);
-                                setTimeout(() => {
-                                  setVisibleCount((v) => Math.min(v + CODE_PAGE_SIZE, sameDongAll.length));
-                                  setIsLoadingMore(false);
-                                }, 400);
-                              }}
-                              className="w-full text-center py-2.5 text-[13px] font-bold text-primary bg-[#EFEFFD] rounded-xl active:opacity-70 disabled:opacity-60"
-                            >
-                              {isLoadingMore ? "불러오는 중..." : "더보기"}
-                            </button>
+                            <div ref={loadMoreRef} className="py-3 flex justify-center">
+                              {isLoadingMore && <span className="text-[12.5px] text-text-secondary">불러오는 중...</span>}
+                            </div>
                           )}
                         </div>
                       )}
 
-                      {otherDongAll.length > 0 && (
-                        <>
-                          <p className="text-[12.5px] font-bold text-text-secondary mt-5 mb-2">
-                            같은 단지 다른 동 {otherDongAll.length}건
-                          </p>
-                          <div>
-                            {otherDongAll.map((h) => (
-                              <AccessHistoryCard
-                                key={h.id}
-                                entry={h}
-                                dongLabel={h.dong}
-                                votes={getVoteState(h)}
-                                onApply={applyHistory}
-                                onVote={handleVote}
-                              />
-                            ))}
-                          </div>
-                        </>
+                      {otherDongCount > 0 && (
+                        <button
+                          onClick={() => setShowOtherDong(true)}
+                          className="w-full flex items-center justify-between mt-5 py-3 px-4 bg-white rounded-xl border border-[#E5E5EA] active:opacity-70"
+                        >
+                          <span className="text-[13.5px] font-bold text-text-primary">같은 단지 다른 동 비밀번호 보기</span>
+                          <span className="flex items-center gap-1 text-[12.5px] font-semibold text-text-secondary">
+                            {otherDongCount}건
+                            <svg width="7" height="12" viewBox="0 0 7 12" fill="none">
+                              <path d="M1 1L6 6L1 11" stroke="#C7C7CC" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </span>
+                        </button>
                       )}
                     </div>
                   )}
                 </div>
               )}
 
-              {tab === "edit" && (
+              {!showOtherDong && tab === "edit" && (
                 <div>
                   <p className="text-[13px] text-text-caption leading-relaxed mb-4">
                     {isAccessMissing
