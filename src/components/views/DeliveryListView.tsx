@@ -696,7 +696,7 @@ export default function DeliveryListView() {
         <div className="absolute inset-0 bg-black/45 z-50 flex items-end" onClick={() => setActiveId(null)}>
           <div
             ref={sheetScrollRef}
-            className="w-full bg-[#F2F2F7] rounded-t-[20px] pt-2.5 pb-8 max-h-[85%] overflow-y-auto flex flex-col"
+            className="w-full bg-[#F2F2F7] rounded-t-[20px] pt-2.5 pb-8 h-[85%] overflow-y-auto flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-9 h-[4.5px] bg-[#D3D4DA] rounded-full mx-auto mb-3.5 flex-shrink-0" />
@@ -746,7 +746,7 @@ export default function DeliveryListView() {
 
                   {otherDongAll.length === 0 && (
                     <p className="text-center text-[13.5px] text-[#A4A6AE] py-8">
-                      {otherDongQueryLower ? "검색 결과가 없어요." : "등록된 다른 동 이력이 없어요."}
+                      {otherDongQueryLower ? "검색 결과가 없습니다." : "등록된 다른 동 이력이 없어요."}
                     </p>
                   )}
 
@@ -786,9 +786,15 @@ export default function DeliveryListView() {
 
                   {sameDongAll.length === 0 && otherDongCount === 0 && (
                     <p className="text-center text-[13.5px] text-[#A4A6AE] py-8">
-                      검색된 이력이 없어요.
-                      <br />
-                      "등록/수정" 탭에서 직접 등록해주세요.
+                      {q ? (
+                        "검색 결과가 없습니다."
+                      ) : (
+                        <>
+                          검색된 이력이 없어요.
+                          <br />
+                          "등록/수정" 탭에서 직접 등록해주세요.
+                        </>
+                      )}
                     </p>
                   )}
 
@@ -799,7 +805,7 @@ export default function DeliveryListView() {
                       </p>
                       {sameDongAll.length === 0 && (
                         <p className="text-[13px] text-[#A4A6AE] mb-4">
-                          {q ? "검색 결과가 없어요." : "같은 동에 등록된 이력이 없어요."}
+                          {q ? "검색 결과가 없습니다." : "같은 동에 등록된 이력이 없어요."}
                         </p>
                       )}
                       {sameDongAll.length > 0 && (
