@@ -4,7 +4,7 @@ import AccessHistoryCard from "@/components/AccessHistoryCard";
 import {
   ACCESS_HISTORY,
   isWithinLast3Months,
-  byRecommendation,
+  byRecency,
   type AccessHistoryEntry,
 } from "@/lib/accessHistory";
 
@@ -125,18 +125,16 @@ function normalizeHistoryValue(code: string): string {
   return digits ? `공용 공동현관 비밀번호 #${digits}` : "정보 없음";
 }
 
-// 고객 입력 정보가 없을 때만 쓰는 대체값 - 같은 동 이력 중 좋아요가 가장 많은 이력, 좋아요가 하나도 없으면 가장 최신 이력, 이력 자체가 없으면 정보 없음.
+// 고객 입력 정보가 없을 때만 쓰는 대체값 - 같은 동 이력 중 가장 최신 이력, 이력 자체가 없으면 정보 없음.
 // 다른 동 이력은 비밀번호가 다를 수 있어 카드 자동완성에는 절대 쓰지 않는다 - 바텀시트의 "같은 단지 다른 동" 섹션에서 동 번호를 밝히고 참고용으로만 노출한다.
 function getBestHistoryValue(item: DeliveryItem): string {
   const entries = ACCESS_HISTORY.filter((h) => h.complexId === item.complexId && h.dong === item.dong && isWithinLast3Months(h.date));
   if (entries.length === 0) return "정보 없음";
-  const maxUp = Math.max(...entries.map((h) => h.initialUp));
-  const candidates = maxUp > 0 ? entries.filter((h) => h.initialUp === maxUp) : entries;
-  const best = candidates.sort((a, b) => b.date.localeCompare(a.date))[0];
+  const best = entries.sort(byRecency)[0];
   return normalizeHistoryValue(best.code);
 }
 
-// 출입 정보 표시값의 우선순위: 고객이 입력한 정보 > 같은 동 이력 중 좋아요 최다 > 같은 동 이력 중 최신 > 정보 없음.
+// 출입 정보 표시값의 우선순위: 고객이 입력한 정보 > 같은 동 이력 중 최신 > 정보 없음.
 function resolveAccessValue(item: DeliveryItem): string {
   return hasCustomerAccessInfo(item.initialAccessValue) ? item.initialAccessValue : getBestHistoryValue(item);
 }
@@ -270,8 +268,6 @@ export default function DeliveryListView() {
   // 등록된 비밀번호가 많을 수 있어(최신 3개월 전체) 처음엔 추천순 상위 몇 개만 보여주고, 더보기를 누를 때마다 5건씩 추가로 불러온다.
   const [visibleCount, setVisibleCount] = useState(CODE_PAGE_SIZE);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  // 좋아요/싫어요는 라이더 커뮤니티가 등록된 비밀번호의 신뢰도를 직접 검증하는 장치 - 코드별로 카운트와 내 투표 상태를 갖는다.
-  const [votes, setVotes] = useState<Record<string, { up: number; down: number; userVote: "up" | "down" | null }>>({});
   const sheetScrollRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   // "같은 단지 다른 동 비밀번호 보기"는 별도 페이지가 아니라 같은 바텀시트 안에서 화면만 전환한다.
@@ -327,28 +323,6 @@ export default function DeliveryListView() {
     setActiveId(id);
   }
 
-  // 이력 하나의 현재 좋아요/싫어요 상태 - 아직 투표한 적 없으면 목데이터의 초기값을 그대로 쓴다.
-  function getVoteState(entry: AccessHistoryEntry) {
-    return votes[entry.id] ?? { up: entry.initialUp, down: entry.initialDown, userVote: null as "up" | "down" | null };
-  }
-
-  // 같은 버튼을 다시 누르면 투표 취소, 반대 버튼을 누르면 기존 투표를 옮긴다.
-  function handleVote(entry: AccessHistoryEntry, direction: "up" | "down") {
-    setVotes((prev) => {
-      const current = prev[entry.id] ?? { up: entry.initialUp, down: entry.initialDown, userVote: null as "up" | "down" | null };
-      const next = { ...current };
-      if (current.userVote === direction) {
-        next[direction] -= 1;
-        next.userVote = null;
-      } else {
-        if (current.userVote) next[current.userVote] -= 1;
-        next[direction] += 1;
-        next.userVote = direction;
-      }
-      return { ...prev, [entry.id]: next };
-    });
-  }
-
   function saveAccessInfo() {
     if (!activeId) return;
     const opt = ACCESS_OPTIONS.find((o) => o.value === selectedOption)!;
@@ -371,45 +345,37 @@ export default function DeliveryListView() {
     fireToast("출입 정보가 적용되었습니다");
   }
 
-  const q = query.trim().toLowerCase();
-  const matchesQuery = (h: AccessHistoryEntry) => !q || (h.dong + h.code + h.date).toLowerCase().includes(q);
-  // 같은 동 이력: 배송지와 동이 같은 기록만 모은다. 동/날짜/전화번호는 라이더에게 불필요해서 빼고,
-  // 같은 비밀번호는 하나로 합쳐 코드만 보여준다(동이 같으니 굳이 동 번호를 다시 쓰지 않는다).
-  const sameDongAll = activeItem
-    ? Array.from(
-        ACCESS_HISTORY.filter(
-          (h) => h.complexId === activeItem.complexId && h.dong === activeItem.dong && isWithinLast3Months(h.date) && matchesQuery(h)
-        )
-          .sort(byRecommendation(votes))
-          .reduce((map, h) => {
-            if (!map.has(h.code)) map.set(h.code, h);
-            return map;
-          }, new Map<string, AccessHistoryEntry>())
-          .values()
-      )
+  // 동+비밀번호 조합으로 합쳐 같은 동의 같은 비밀번호는 하나로 묶되, 다른 동은 코드가 같아도 따로 남긴다.
+  const dedupeByDongCode = (entries: AccessHistoryEntry[]) =>
+    Array.from(
+      [...entries]
+        .sort(byRecency)
+        .reduce((map, h) => {
+          const key = `${h.dong}__${h.code}`;
+          if (!map.has(key)) map.set(key, h);
+          return map;
+        }, new Map<string, AccessHistoryEntry>())
+        .values()
+    );
+
+  // 검색 전엔 배송지와 동일한 동만 보여주지만, 동 번호로 검색하면 그 동을 포함해 단지 전체에서 찾는다.
+  const complexPool = activeItem
+    ? ACCESS_HISTORY.filter((h) => h.complexId === activeItem.complexId && isWithinLast3Months(h.date))
     : [];
+
+  const q = query.trim().toLowerCase();
+  const sameDongAll = dedupeByDongCode(
+    q ? complexPool.filter((h) => h.dong.toLowerCase().includes(q)) : complexPool.filter((h) => h.dong === activeItem?.dong)
+  );
   const sameDongCodes = sameDongAll.slice(0, visibleCount);
 
-  // 같은 단지 다른 동 이력: 바텀시트 안의 별도 화면(showOtherDong)에서 자체 검색창으로 다시 좁혀볼 수 있어
-  // 메인 검색(query)과는 독립적으로 전체 목록을 계산한다.
-  const otherDongBase = activeItem
-    ? Array.from(
-        ACCESS_HISTORY.filter(
-          (h) => h.complexId === activeItem.complexId && h.dong !== activeItem.dong && isWithinLast3Months(h.date)
-        )
-          .sort(byRecommendation(votes))
-          .reduce((map, h) => {
-            const key = `${h.dong}__${h.code}`;
-            if (!map.has(key)) map.set(key, h);
-            return map;
-          }, new Map<string, AccessHistoryEntry>())
-          .values()
-      )
-    : [];
+  // 같은 단지 다른 동 이력: 기본값은 배송지 동을 뺀 목록이지만, 이 화면의 검색창으로 동 번호를 검색하면
+  // 배송지 동도 포함해 단지 전체에서 찾는다(메인 검색과는 독립적인 상태값을 쓴다).
+  const otherDongBase = dedupeByDongCode(complexPool.filter((h) => h.dong !== activeItem?.dong));
   const otherDongCount = otherDongBase.length;
   const otherDongQueryLower = otherDongQuery.trim().toLowerCase();
   const otherDongAll = otherDongQueryLower
-    ? otherDongBase.filter((h) => (h.dong + h.code + h.date).toLowerCase().includes(otherDongQueryLower))
+    ? dedupeByDongCode(complexPool.filter((h) => h.dong.toLowerCase().includes(otherDongQueryLower)))
     : otherDongBase;
   const otherDongVisible = otherDongAll.slice(0, otherDongVisibleCount);
 
@@ -779,20 +745,22 @@ export default function DeliveryListView() {
                   />
 
                   {otherDongAll.length === 0 && (
-                    <p className="text-center text-[13.5px] text-[#A4A6AE] py-8">등록된 다른 동 이력이 없어요.</p>
+                    <p className="text-center text-[13.5px] text-[#A4A6AE] py-8">
+                      {otherDongQueryLower ? "검색 결과가 없어요." : "등록된 다른 동 이력이 없어요."}
+                    </p>
                   )}
 
                   {otherDongAll.length > 0 && (
                     <div>
-                      <p className="text-[12.5px] font-bold text-text-secondary mb-2">같은 단지 다른 동 {otherDongAll.length}건</p>
+                      <p className="text-[12.5px] font-bold text-text-secondary mb-2">
+                        {otherDongQueryLower ? `검색 결과 ${otherDongAll.length}건` : `같은 단지 다른 동 ${otherDongAll.length}건`}
+                      </p>
                       {otherDongVisible.map((h) => (
                         <AccessHistoryCard
                           key={h.id}
                           entry={h}
                           dongLabel={h.dong}
-                          votes={getVoteState(h)}
                           onApply={applyHistory}
-                          onVote={handleVote}
                         />
                       ))}
                       {otherDongVisibleCount < otherDongAll.length && (
@@ -827,15 +795,22 @@ export default function DeliveryListView() {
                   {(sameDongAll.length > 0 || otherDongCount > 0) && (
                     <div>
                       <p className="text-[12.5px] font-bold text-text-secondary mb-2">
-                        같은 단지 같은 동 {sameDongAll.length}건
+                        {q ? `검색 결과 ${sameDongAll.length}건` : `같은 단지 같은 동 ${sameDongAll.length}건`}
                       </p>
                       {sameDongAll.length === 0 && (
-                        <p className="text-[13px] text-[#A4A6AE] mb-4">같은 동에 등록된 이력이 없어요.</p>
+                        <p className="text-[13px] text-[#A4A6AE] mb-4">
+                          {q ? "검색 결과가 없어요." : "같은 동에 등록된 이력이 없어요."}
+                        </p>
                       )}
                       {sameDongAll.length > 0 && (
                         <div>
                           {sameDongCodes.map((h) => (
-                            <AccessHistoryCard key={h.id} entry={h} votes={getVoteState(h)} onApply={applyHistory} onVote={handleVote} />
+                            <AccessHistoryCard
+                              key={h.id}
+                              entry={h}
+                              dongLabel={h.dong !== activeItem?.dong ? h.dong : undefined}
+                              onApply={applyHistory}
+                            />
                           ))}
                           {visibleCount < sameDongAll.length && (
                             <div ref={loadMoreRef} className="py-3 flex justify-center">
